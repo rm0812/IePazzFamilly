@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>家康ファミリー</title>
+<style>
+body{font-family:sans-serif;text-align:center;background:#111;color:#fff;margin:0}
+canvas{border:2px solid #555;touch-action:none;max-width:100vw}
+#info{padding:8px}
+button{font-size:18px;padding:8px 12px;margin:4px}
+</style>
+</head>
+<body>
+<h2>家康ファミリー</h2>
+<div id="info">←→移動 / ↓落下 / Score:<span id="score">0</span></div>
+<canvas id="game" width="240" height="480"></canvas><br>
+<button onclick="move(-1)">◀</button>
+<button onclick="drop()">▼</button>
+<button onclick="move(1)">▶</button>
+
+<script>
+const W=6,H=12,S=40;
+const cv=document.getElementById('game');
+const ctx=cv.getContext('2d');
+const scoreEl=document.getElementById('score');
+
+const TYPES=["家康","ファミリー","菅野","仲手川"];
+const COLORS={
+ "家康":"#2e86de",
+ "ファミリー":"#27ae60",
+ "菅野":"#e74c3c",
+ "仲手川":"#8e44ad"
+};
+
+let score=0;
+let grid=Array.from({length:H},()=>Array(W).fill(null));
+let cur=newPiece();
+
+function newPiece(){
+ return {x:2,y:0,t:TYPES[Math.floor(Math.random()*TYPES.length)]};
+}
+
+function draw(){
+ ctx.clearRect(0,0,240,480);
+
+ for(let y=0;y<H;y++){
+   for(let x=0;x<W;x++){
+     if(grid[y][x]) drawBlock(x,y,grid[y][x]);
+     ctx.strokeStyle="#333";
+     ctx.strokeRect(x*S,y*S,S,S);
+   }
+ }
+
+ drawBlock(cur.x,cur.y,cur.t);
+}
+
+function drawBlock(x,y,t){
+ ctx.fillStyle=COLORS[t];
+ ctx.fillRect(x*S+1,y*S+1,S-2,S-2);
+ ctx.fillStyle="white";
+ ctx.font="10px sans-serif";
+ ctx.fillText(t,x*S+2,y*S+22);
+}
+
+function move(d){
+ if(can(cur.x+d,cur.y)) cur.x+=d;
+ draw();
+}
+
+function can(x,y){
+ if(x<0||x>=W||y>=H) return false;
+ if(y>=0 && grid[y][x]) return false;
+ return true;
+}
+
+function drop(){
+ while(can(cur.x,cur.y+1)) cur.y++;
+ tick();
+}
+
+function tick(){
+ if(can(cur.x,cur.y+1)){
+   cur.y++;
+ } else {
+   place();
+ }
+ draw();
+}
+
+function place(){
+ if(cur.y<0){gameOver();return;}
+ grid[cur.y][cur.x]=cur.t;
+
+ if(cur.t==="菅野"){
+   for(let x=0;x<W;x++) grid[cur.y][x]=null;
+   score+=50;
+ }
+
+ resolve();
+
+ cur=newPiece();
+ if(grid[0][cur.x]) gameOver();
+}
+
+function resolve(){
+ let changed=true;
+
+ while(changed){
+   changed=false;
+
+   for(let y=0;y<H;y++){
+     for(let x=0;x<W;x++){
+
+       if(grid[y][x]==="家康"){
+
+         if(x+1<W && grid[y][x+1]==="ファミリー"){
+           grid[y][x]=null;
+           grid[y][x+1]=null;
+           score+=100;
+           changed=true;
+         }
+
+         if(y+1<H && grid[y+1][x]==="ファミリー"){
+           grid[y][x]=null;
+           grid[y+1][x]=null;
+           score+=100;
+           changed=true;
+         }
+       }
+     }
+   }
+
+   gravity();
+ }
+
+ scoreEl.textContent=score;
+}
+
+function gravity(){
+ for(let x=0;x<W;x++){
+   for(let y=H-2;y>=0;y--){
+     if(grid[y][x] && grid[y][x]!=="仲手川"){
+       let ny=y;
+       while(ny+1<H && !grid[ny+1][x]){
+         grid[ny+1][x]=grid[ny][x];
+         grid[ny][x]=null;
+         ny++;
+       }
+     }
+   }
+ }
+}
+
+function gameOver(){
+ alert("ゲームオーバー\nScore:"+score);
+ grid=Array.from({length:H},()=>Array(W).fill(null));
+ score=0;
+ scoreEl.textContent=0;
+ cur=newPiece();
+}
+
+document.addEventListener("keydown",e=>{
+ if(e.key==="ArrowLeft") move(-1);
+ if(e.key==="ArrowRight") move(1);
+ if(e.key==="ArrowDown") drop();
+});
+
+setInterval(()=>{tick();draw();},700);
+draw();
+</script>
+</body>
+</html>
